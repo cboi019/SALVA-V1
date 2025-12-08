@@ -10,21 +10,13 @@ import {SalvaBase} from "./SALVA_BASE_LIB.sol";
  * @dev The contract supports two types of commitments: time-based (locked until a date) and goal-based (locked until an amount is reached).
  * The owner is responsible for whitelisting approved ERC20 tokens.
  */
-/**
- * @title SalvaV1
- * @notice A non-custodial smart contract for creating and managing decentralized, token-based savings commitments.
- * @dev The contract supports two types of commitments: time-based (locked until a date) and goal-based (locked until an amount is reached).
- * The owner is responsible for whitelisting approved ERC20 tokens.
- */
 contract SalvaV1 {
     using SafeERC20 for IERC20;
 
     /// @notice Thrown when a non-owner attempts an owner-only operation.
-    /// @notice Thrown when a non-owner attempts an owner-only operation.
     error SalvaV1__NOT_AUTHORIZED();
     /// @notice Thrown when a function requires a non-zero amount but receives zero.
     error SalvaV1__INPUT_AN_AMOUNT();
-    /// @notice Thrown when a user attempts to use a token that has not been whitelisted by the owner.
     /// @notice Thrown when a user attempts to use a token that has not been whitelisted by the owner.
     error SalvaV1__NOT_ALLOWED_TOKEN();
     /// @notice Thrown when a user attempts to withdraw from a plan before its maturity time or goal is reached.
@@ -109,21 +101,11 @@ contract SalvaV1 {
      * @dev Checks if the specified token is currently whitelisted.
      * @param _token The address of the token to check.
      */
-    /**
-     * @dev Checks if the specified token is currently whitelisted.
-     * @param _token The address of the token to check.
-     */
     modifier isAllowedToken(address _token) {
         _isAllowedToken(_token);
         _;
     }
 
-    /**
-     * @notice Creates a new Time-Based Savings plan. Funds in this plan can only be withdrawn after the maturity time.
-     * @param _token The ERC20 token address to be used for this plan (must be whitelisted).
-     * @param _description A user-defined description for the savings goal.
-     * @param _savingsDuration The duration (in seconds) the funds must be locked for, starting from creation time.
-     */
     /**
      * @notice Creates a new Time-Based Savings plan. Funds in this plan can only be withdrawn after the maturity time.
      * @param _token The ERC20 token address to be used for this plan (must be whitelisted).
@@ -146,21 +128,12 @@ contract SalvaV1 {
 
         uint256 planID = s_planIdCounter;
         s_planIdCounter++;
-        uint256 planID = s_planIdCounter;
-        s_planIdCounter++;
 
-        s_timeBasedPlans[msg.sender][planID] = newTimeBasedPlan;
         s_timeBasedPlans[msg.sender][planID] = newTimeBasedPlan;
 
         emit planCreated(msg.sender, _description, planID);
     }
 
-    /**
-     * @notice Creates a new Goal-Based Savings plan. Funds in this plan can only be withdrawn once the target amount is reached.
-     * @param _token The ERC20 token address to be used for this plan (must be whitelisted).
-     * @param _description A user-defined description for the savings goal.
-     * @param _targetAmount The total amount of tokens required to complete the goal.
-     */
     /**
      * @notice Creates a new Goal-Based Savings plan. Funds in this plan can only be withdrawn once the target amount is reached.
      * @param _token The ERC20 token address to be used for this plan (must be whitelisted).
@@ -182,10 +155,7 @@ contract SalvaV1 {
 
         uint256 planID = s_planIdCounter;
         s_planIdCounter++;
-        uint256 planID = s_planIdCounter;
-        s_planIdCounter++;
 
-        s_goalBasedPlans[msg.sender][planID] = newGoalBasedPlan;
         s_goalBasedPlans[msg.sender][planID] = newGoalBasedPlan;
 
         emit planCreated(msg.sender, _description, planID);
@@ -198,19 +168,11 @@ contract SalvaV1 {
      * @param _id The ID of the time-based plan to fund.
      * @param _amount The amount of tokens to deposit. Must be greater than zero.
      */
-    /**
-     * @notice Deposits a specified amount of tokens into an existing Time-Based Savings plan.
-     * @dev The user must approve this contract to spend the tokens prior to calling this function.
-     * @param _token The address of the token being deposited.
-     * @param _id The ID of the time-based plan to fund.
-     * @param _amount The amount of tokens to deposit. Must be greater than zero.
-     */
     function fundTimeBasedPlan(address _token, uint256 _id, uint256 _amount)
         external
         isAllowedToken(_token)
         noneZero(_amount)
     {
-        SalvaBase.TimeBasedCommitment storage timePlan = s_timeBasedPlans[msg.sender][_id];
         SalvaBase.TimeBasedCommitment storage timePlan = s_timeBasedPlans[msg.sender][_id];
 
         if (_token != timePlan.token) revert SalvaV1__TOKEN_MISMATCH_FOR_PLAN();
@@ -227,19 +189,11 @@ contract SalvaV1 {
      * @param _id The ID of the goal-based plan to fund.
      * @param _amount The amount of tokens to deposit. Must be greater than zero.
      */
-    /**
-     * @notice Deposits a specified amount of tokens into an existing Goal-Based Savings plan. Checks for goal completion.
-     * @dev The user must approve this contract to spend the tokens prior to calling this function.
-     * @param _token The address of the token being deposited.
-     * @param _id The ID of the goal-based plan to fund.
-     * @param _amount The amount of tokens to deposit. Must be greater than zero.
-     */
     function fundGoalBasedPlan(address _token, uint256 _id, uint256 _amount)
         external
         isAllowedToken(_token)
         noneZero(_amount)
     {
-        SalvaBase.GoalBasedSavings storage goalPlan = s_goalBasedPlans[msg.sender][_id];
         SalvaBase.GoalBasedSavings storage goalPlan = s_goalBasedPlans[msg.sender][_id];
 
         if (_token != goalPlan.token) revert SalvaV1__TOKEN_MISMATCH_FOR_PLAN();
@@ -261,20 +215,11 @@ contract SalvaV1 {
      * @param _id The ID of the time-based plan to withdraw from.
      * @param _amount The amount of tokens to withdraw. Must be greater than zero.
      */
-    /**
-     * @notice Withdraws a specified amount of tokens from a Time-Based Savings plan.
-     * @dev This function can only be called if the current block.timestamp is greater than or equal to the plan's maturity time.
-     * If the plan balance reaches zero, the plan is deleted.
-     * @param _id The ID of the time-based plan to withdraw from.
-     * @param _amount The amount of tokens to withdraw. Must be greater than zero.
-     */
     function withdrawFromTBS(uint256 _id, uint256 _amount) external noneZero(_amount) {
-        SalvaBase.TimeBasedCommitment storage timePlan = s_timeBasedPlans[msg.sender][_id];
         SalvaBase.TimeBasedCommitment storage timePlan = s_timeBasedPlans[msg.sender][_id];
 
         address token = timePlan.token;
         if (block.timestamp >= timePlan.maturityTime) timePlan.isComplete = true;
-        
         
         if (timePlan.isComplete == false) revert SalvaV1__COMMITMENT_NOT_MATURE();
         if (_amount > timePlan.currentAmount) revert SalvaV1__INSUFFICIENT_BALANCE(timePlan.currentAmount);
@@ -284,7 +229,6 @@ contract SalvaV1 {
         IERC20(token).safeTransfer(msg.sender, _amount);
 
         if (timePlan.currentAmount == 0) {
-            delete s_timeBasedPlans[msg.sender][_id];
             delete s_timeBasedPlans[msg.sender][_id];
         }
     }
@@ -296,16 +240,7 @@ contract SalvaV1 {
      * @param _id The ID of the goal-based plan to withdraw from.
      * @param _amount The amount of tokens to withdraw. Must be greater than zero.
      */
-    /**
-     * @notice Withdraws a specified amount of tokens from a Goal-Based Savings plan.
-     * @dev This function can only be called if the plan's current amount is greater than or equal to the target amount (`isComplete` is true).
-     * If the plan balance reaches zero, the plan is deleted.
-     * @param _id The ID of the goal-based plan to withdraw from.
-     * @param _amount The amount of tokens to withdraw. Must be greater than zero.
-     */
     function withdrawFromGBS(uint256 _id, uint256 _amount) external noneZero(_amount) {
-        SalvaBase.GoalBasedSavings storage goalPlan = s_goalBasedPlans[msg.sender][_id];
-        
         SalvaBase.GoalBasedSavings storage goalPlan = s_goalBasedPlans[msg.sender][_id];
         
         if (goalPlan.isComplete == false) revert SalvaV1__COMMITMENT_NOT_MATURE();
@@ -318,17 +253,9 @@ contract SalvaV1 {
 
         if (goalPlan.currentAmount == 0) {
             delete s_goalBasedPlans[msg.sender][_id];
-            delete s_goalBasedPlans[msg.sender][_id];
         }
     }
 
-    /**
-     * @notice Allows the contract owner to add or remove a token from the whitelist.
-     * @dev Only callable by the contract owner.
-     * @param _tokenAddress The address of the ERC20 token to modify.
-     * @param _name A descriptive name for the token (used in events).
-     * @param _isAllowed If true, the token is added/allowed; if false, it is removed/disallowed.
-     */
     /**
      * @notice Allows the contract owner to add or remove a token from the whitelist.
      * @dev Only callable by the contract owner.
@@ -339,21 +266,13 @@ contract SalvaV1 {
     function addOrRemoveToken(address _tokenAddress, string memory _name, bool _isAllowed) external onlyOwner {
         if (_isAllowed) {
             s_isTokenWhitelisted[_tokenAddress] = true;
-            s_isTokenWhitelisted[_tokenAddress] = true;
             emit tokenAdded(_tokenAddress, _name, _isAllowed);
         } else {
-            s_isTokenWhitelisted[_tokenAddress] = false;
             s_isTokenWhitelisted[_tokenAddress] = false;
             emit tokenRemoved(_tokenAddress, _name, _isAllowed);
         }
     }
 
-    /**
-     * @notice Returns the details of a Time-Based Savings plan for a specific user and ID.
-     * @param _user The address of the plan creator.
-     * @param _id The ID of the Time-Based plan to view.
-     * @return TimeBasedCommitment The structure containing all plan details.
-     */
     /**
      * @notice Returns the details of a Time-Based Savings plan for a specific user and ID.
      * @param _user The address of the plan creator.
@@ -366,15 +285,8 @@ contract SalvaV1 {
         returns (SalvaBase.TimeBasedCommitment memory)
     {
         return s_timeBasedPlans[_user][_id];
-        return s_timeBasedPlans[_user][_id];
     }
 
-    /**
-     * @notice Returns the details of a Goal-Based Savings plan for a specific user and ID.
-     * @param _user The address of the plan creator.
-     * @param _id The ID of the Goal-Based plan to view.
-     * @return GoalBasedSavings The structure containing all plan details.
-     */
     /**
      * @notice Returns the details of a Goal-Based Savings plan for a specific user and ID.
      * @param _user The address of the plan creator.
@@ -383,27 +295,16 @@ contract SalvaV1 {
      */
     function viewGoalBasedPlan(address _user, uint256 _id) external view returns (SalvaBase.GoalBasedSavings memory) {
         return s_goalBasedPlans[_user][_id];
-        return s_goalBasedPlans[_user][_id];
     }
 
-    /**
-     * @notice Returns the immutable address of the contract owner.
-     * @return The owner's address.
-     */
     /**
      * @notice Returns the immutable address of the contract owner.
      * @return The owner's address.
      */
     function getOwner() public view returns (address) {
         return i_owner;
-        return i_owner;
     }
 
-    /**
-     * @notice Checks if a given ERC20 token address is currently whitelisted.
-     * @param _tokenAddress The address of the token to check.
-     * @return True if the token is whitelisted, false otherwise.
-     */
     /**
      * @notice Checks if a given ERC20 token address is currently whitelisted.
      * @param _tokenAddress The address of the token to check.
@@ -411,13 +312,8 @@ contract SalvaV1 {
      */
     function checkAllowedToken(address _tokenAddress) external view returns (bool) {
         return s_isTokenWhitelisted[_tokenAddress];
-        return s_isTokenWhitelisted[_tokenAddress];
     }
 
-    /**
-     * @dev Internal function to check if the sender is the contract owner.
-     * @param _sender The address of the caller.
-     */
     /**
      * @dev Internal function to check if the sender is the contract owner.
      * @param _sender The address of the caller.
@@ -430,12 +326,7 @@ contract SalvaV1 {
      * @dev Internal function to ensure an amount is greater than zero.
      * @param _amount The amount to validate.
      */
-    /**
-     * @dev Internal function to ensure an amount is greater than zero.
-     * @param _amount The amount to validate.
-     */
     function _noneZero(uint256 _amount) internal pure {
-        if (_amount == 0) revert SalvaV1__INPUT_AN_AMOUNT();
         if (_amount == 0) revert SalvaV1__INPUT_AN_AMOUNT();
     }
 
@@ -443,12 +334,7 @@ contract SalvaV1 {
      * @dev Internal function to ensure a token is whitelisted.
      * @param _token The address of the token to validate.
      */
-    /**
-     * @dev Internal function to ensure a token is whitelisted.
-     * @param _token The address of the token to validate.
-     */
     function _isAllowedToken(address _token) internal view {
-        if (!s_isTokenWhitelisted[_token]) revert SalvaV1__NOT_ALLOWED_TOKEN();
         if (!s_isTokenWhitelisted[_token]) revert SalvaV1__NOT_ALLOWED_TOKEN();
     }
 }
