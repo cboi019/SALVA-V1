@@ -47,7 +47,7 @@
 
     // --- Mock Data & Helpers ---
     const shortenAddress = (addr) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-    const formatTokenAmount = (amount, decimals = 18) => ethers.formatUnits(amount, decimals);
+    const formatTokenAmount = (amount, decimals = 6) => ethers.formatUnits(amount, decimals);
     const formatTimestamp = (timestamp) => new Date(Number(timestamp) * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
     // ====================================================================
