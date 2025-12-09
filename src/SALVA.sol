@@ -28,19 +28,29 @@ contract SalvaV1 {
     /// @notice Thrown when a user attempts to withdraw more than the current balance of the plan.
     error SalvaV1__INSUFFICIENT_BALANCE(uint256);
 
-    /** @dev The immutable address of the contract deployer (owner). */
+    /**
+     * @dev The immutable address of the contract deployer (owner).
+     */
     address private immutable i_owner;
 
-    /** @dev Counter used to assign unique IDs to new savings plans. Starts at 1. */
+    /**
+     * @dev Counter used to assign unique IDs to new savings plans. Starts at 1.
+     */
     uint256 private s_planIdCounter = 1;
 
-    /** @dev Mapping to track which ERC20 token addresses are whitelisted for use in savings plans. */
+    /**
+     * @dev Mapping to track which ERC20 token addresses are whitelisted for use in savings plans.
+     */
     mapping(address token => bool) private s_isTokenWhitelisted;
 
-    /** @dev Mapping from user address to their TimeBasedCommitment plans (ID => Commitment Struct). */
+    /**
+     * @dev Mapping from user address to their TimeBasedCommitment plans (ID => Commitment Struct).
+     */
     mapping(address user => mapping(uint256 => SalvaBase.TimeBasedCommitment)) private s_timeBasedPlans;
 
-    /** @dev Mapping from user address to their GoalBasedSavings plans (ID => Savings Struct). */
+    /**
+     * @dev Mapping from user address to their GoalBasedSavings plans (ID => Savings Struct).
+     */
     mapping(address user => mapping(uint256 => SalvaBase.GoalBasedSavings)) private s_goalBasedPlans;
 
     /// @notice Emitted when the owner adds a new token to the whitelist.
@@ -72,6 +82,12 @@ contract SalvaV1 {
     /// @param _user The address of the user who completed the goal.
     /// @param _amount The target amount that was achieved.
     event GoalAchieved(address indexed _user, uint256 _amount);
+    
+    /// @notice Emitted when a savings plan is deleted because its balance reached zero after a withdrawal.
+    /// @param _user The address of the user who owned the plan.
+    /// @param _description The description of the ended plan.
+    /// @param _id The ID of the plan that was ended.
+    event planEnded(address indexed _user, string _description, uint256 _id);
 
     /**
      * @notice Initializes the contract and sets the deployer as the immutable owner.
@@ -176,6 +192,7 @@ contract SalvaV1 {
         SalvaBase.TimeBasedCommitment storage timePlan = s_timeBasedPlans[msg.sender][_id];
 
         if (_token != timePlan.token) revert SalvaV1__TOKEN_MISMATCH_FOR_PLAN();
+        if (block.timestamp >= timePlan.maturityTime) timePlan.isComplete = true;
         timePlan.currentAmount += _amount;
 
         emit planFunded(msg.sender, timePlan.description, _amount, _id);
@@ -218,18 +235,20 @@ contract SalvaV1 {
     function withdrawFromTBS(uint256 _id, uint256 _amount) external noneZero(_amount) {
         SalvaBase.TimeBasedCommitment storage timePlan = s_timeBasedPlans[msg.sender][_id];
 
-        address token = timePlan.token;
-        if (block.timestamp >= timePlan.maturityTime) timePlan.isComplete = true;
-        
+        if (block.timestamp >= timePlan.maturityTime && timePlan.isComplete == false) timePlan.isComplete = true;
+
         if (timePlan.isComplete == false) revert SalvaV1__COMMITMENT_NOT_MATURE();
+
         if (_amount > timePlan.currentAmount) revert SalvaV1__INSUFFICIENT_BALANCE(timePlan.currentAmount);
 
+        address token = timePlan.token;
         timePlan.currentAmount -= _amount;
 
         IERC20(token).safeTransfer(msg.sender, _amount);
 
         if (timePlan.currentAmount == 0) {
             delete s_timeBasedPlans[msg.sender][_id];
+            emit planEnded(msg.sender, timePlan.description, _id);
         }
     }
 
@@ -242,7 +261,7 @@ contract SalvaV1 {
      */
     function withdrawFromGBS(uint256 _id, uint256 _amount) external noneZero(_amount) {
         SalvaBase.GoalBasedSavings storage goalPlan = s_goalBasedPlans[msg.sender][_id];
-        
+
         if (goalPlan.isComplete == false) revert SalvaV1__COMMITMENT_NOT_MATURE();
         if (_amount > goalPlan.currentAmount) revert SalvaV1__INSUFFICIENT_BALANCE(goalPlan.currentAmount);
 
@@ -253,6 +272,7 @@ contract SalvaV1 {
 
         if (goalPlan.currentAmount == 0) {
             delete s_goalBasedPlans[msg.sender][_id];
+            emit planEnded(msg.sender, goalPlan.description, _id);
         }
     }
 
